@@ -1,0 +1,23 @@
+# ======================
+# Secrets & Environment
+# ======================
+.env
+*.env
+
+# ======================
+# Python
+# ======================
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# ======================
+# Editor & OS
+# ======================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
