@@ -149,6 +149,36 @@ tools = [
             "required": ["medications"]
         }
     },
+
+   {
+        "name": "get_care_pathway",
+        "description": (
+            "Returns a summary of the Finnish Current Care Guideline (Käypä hoito) "
+            "for a given condition or diagnosis. Includes key recommendations, "
+            "first-line treatments, referral criteria, and follow-up guidance. "
+            "Käypä hoito guidelines are the national evidence-based clinical guidelines "
+            "used across the Finnish healthcare system. "
+            "Accepts condition names in Finnish or English."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "condition": {
+                    "type": "string",
+                    "description": "Condition or diagnosis name in Finnish or English, e.g. 'type 2 diabetes' or 'tyypin 2 diabetes'"
+                },
+                "focus": {
+                    "type": "string",
+                    "description": "Optional focus area, e.g. 'medication', 'referral criteria', 'follow-up', 'diagnosis'"
+                },
+                "care_setting": {
+                    "type": "string",
+                    "description": "Care setting: 'primary care', 'emergency', 'specialist', or Finnish equivalent"
+                }
+            },
+            "required": ["condition"]
+        }
+    }
 ]
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -327,6 +357,57 @@ def check_drug_interactions(
 
     return result
 
+def get_care_pathway(
+    condition: str,
+    focus: str = None,
+    care_setting: str = None
+) -> str:
+    """
+    Return a summary of the Finnish Current Care Guideline (Käypä hoito)
+    for a given condition.
+    Käypä hoito guidelines are published by the Finnish Medical Society Duodecim
+    and represent the national standard for evidence-based clinical practice in Finland.
+    """
+
+    focus_instruction = (
+        f"Focus particularly on: {focus}." if focus
+        else "Cover all key areas of the guideline."
+    )
+
+    setting_instruction = (
+        f"Tailor recommendations for the {care_setting} setting."
+        if care_setting
+        else "Include guidance relevant across care settings."
+    )
+
+    result = (
+        f"KÄYPÄ HOITO CARE PATHWAY REQUEST\n"
+        f"{'─' * 40}\n"
+        f"Condition: {condition}\n"
+        f"Focus: {focus or 'General overview'}\n"
+        f"Care setting: {care_setting or 'Not specified'}\n\n"
+        f"{'─' * 40}\n"
+        f"Please summarise the Finnish Current Care Guideline (Käypä hoito) "
+        f"for {condition}.\n\n"
+        f"{focus_instruction} {setting_instruction}\n\n"
+        f"Structure the response as follows:\n\n"
+        f"1. DIAGNOSTIC CRITERIA\n"
+        f"   Key criteria for confirming the diagnosis.\n\n"
+        f"2. FIRST-LINE TREATMENT\n"
+        f"   Recommended initial management including medications and non-pharmacological care.\n\n"
+        f"3. REFERRAL CRITERIA\n"
+        f"   When to refer to specialist care.\n\n"
+        f"4. FOLLOW-UP\n"
+        f"   Recommended monitoring intervals and targets.\n\n"
+        f"5. PATIENT GUIDANCE\n"
+        f"   Key points for patient self-management and lifestyle.\n\n"
+        f"Note that this is a decision-support summary. The clinician should consult "
+        f"the full Käypä hoito guideline at kaypahoito.fi for complete recommendations."
+    )
+
+    return result
+   
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TOOL ROUTER
@@ -342,9 +423,10 @@ def run_tool(tool_name: str, tool_input: dict) -> str:
         return generate_soap_note(**tool_input)
     elif tool_name == "check_drug_interactions":
         return check_drug_interactions(**tool_input)
+    elif tool_name == "get_care_pathway":
+        return get_care_pathway(**tool_input)
     else:
         return f"Unknown tool: {tool_name}"
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SYSTEM PROMPT
