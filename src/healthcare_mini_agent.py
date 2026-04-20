@@ -76,6 +76,50 @@ tools = [
             "required": ["description"]
         }
     },
+
+   {
+        "name": "generate_soap_note",
+        "description": (
+            "Generates a structured SOAP note (Subjective, Objective, Assessment, Plan) "
+            "from patient information, ready for entry into an EHR system such as Lifecare. "
+            "Accepts input in Finnish or English and generates the note in the same language. "
+            "SOAP notes follow Finnish healthcare documentation standards."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "patient_age": {
+                    "type": "integer",
+                    "description": "Patient age in years"
+                },
+                "patient_gender": {
+                    "type": "string",
+                    "description": "Patient gender, e.g. 'male', 'female', 'other' or Finnish equivalent"
+                },
+                "chief_complaint": {
+                    "type": "string",
+                    "description": "The patient's primary complaint in their own words, in Finnish or English"
+                },
+                "symptoms": {
+                    "type": "string",
+                    "description": "Detailed symptom description including onset, duration, severity"
+                },
+                "vitals": {
+                    "type": "string",
+                    "description": "Vital signs as a free text string, e.g. 'HR 88, BP 130/85, RR 16, Temp 37.2'"
+                },
+                "medical_history": {
+                    "type": "string",
+                    "description": "Relevant past medical history, current medications, allergies"
+                },
+                "assessment": {
+                    "type": "string",
+                    "description": "Clinician's working diagnosis or differential diagnoses"
+                }
+            },
+            "required": ["chief_complaint", "symptoms"]
+        }
+    },
 ]
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -158,6 +202,55 @@ def lookup_icd10_codes(description: str, max_results: int = 5) -> str:
 
     return result
 
+def generate_soap_note(
+    chief_complaint: str,
+    symptoms: str,
+    patient_age: int = None,
+    patient_gender: str = None,
+    vitals: str = None,
+    medical_history: str = None,
+    assessment: str = None
+) -> str:
+    """
+    Generate a structured SOAP note from patient information.
+    SOAP = Subjective, Objective, Assessment, Plan.
+    Output is formatted for direct entry into Finnish EHR systems such as Lifecare.
+    """
+
+    # Build patient context from available fields
+    patient_info_lines = []
+    if patient_age is not None:
+        patient_info_lines.append(f"  Age: {patient_age}")
+    if patient_gender is not None:
+        patient_info_lines.append(f"  Gender: {patient_gender}")
+    patient_info = "\n".join(patient_info_lines) if patient_info_lines else "  Not provided"
+
+    result = (
+        f"SOAP NOTE GENERATION REQUEST\n"
+        f"{'─' * 40}\n"
+        f"Patient:\n{patient_info}\n\n"
+        f"Chief Complaint: {chief_complaint}\n\n"
+        f"Symptoms: {symptoms}\n\n"
+        f"Vitals: {vitals or 'Not provided'}\n\n"
+        f"Medical History / Medications / Allergies: {medical_history or 'Not provided'}\n\n"
+        f"Clinician Assessment: {assessment or 'Not provided'}\n\n"
+        f"{'─' * 40}\n"
+        f"Please generate a complete SOAP note with the following sections:\n\n"
+        f"S – SUBJECTIVE\n"
+        f"  Patient's own account of symptoms, onset, duration, severity, context.\n\n"
+        f"O – OBJECTIVE\n"
+        f"  Measurable findings: vitals, physical observations, test results.\n\n"
+        f"A – ASSESSMENT\n"
+        f"  Working diagnosis or differential diagnoses with ICD-10 codes where applicable.\n\n"
+        f"P – PLAN\n"
+        f"  Proposed actions: investigations, treatments, referrals, follow-up, patient instructions.\n\n"
+        f"Format the note concisely for direct EHR entry. "
+        f"Match the language of the input (Finnish or English). "
+        f"Use clinical language appropriate for a professional audience."
+    )
+
+    return result
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TOOL ROUTER
@@ -169,6 +262,8 @@ def run_tool(tool_name: str, tool_input: dict) -> str:
         return assess_triage_urgency(**tool_input)
     elif tool_name == "lookup_icd10_codes":
         return lookup_icd10_codes(**tool_input)
+    elif tool_name == "generate_soap_note":
+        return generate_soap_note(**tool_input)
     else:
         return f"Unknown tool: {tool_name}"
 
