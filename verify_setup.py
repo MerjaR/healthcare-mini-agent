@@ -14,10 +14,10 @@ def verify():
     # Check SDK connectivity
     client = anthropic.Anthropic(api_key=key)
     response = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=32,
-        messages=[{"role": "user", "content": "Reply with: Setup OK"}]
-    )
+    model="claude-sonnet-4-5",
+    max_tokens=32,
+    messages=[{"role": "user", "content": "Reply with: Setup OK"}]
+)
     print(f"✅ Claude responds: {response.content[0].text}")
     print("\nAll good — ready to run the agent.")
 
