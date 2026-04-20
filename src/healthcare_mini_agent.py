@@ -120,6 +120,35 @@ tools = [
             "required": ["chief_complaint", "symptoms"]
         }
     },
+
+    {
+        "name": "check_drug_interactions",
+        "description": (
+            "Checks a list of medications for known drug-drug interactions, "
+            "contraindications, and safety flags relevant to Finnish healthcare practice. "
+            "References Fimea (Finnish Medicines Agency) safety principles. "
+            "Accepts medication names in Finnish or English (brand or generic names)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "medications": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of medication names, e.g. ['warfarin', 'aspirin', 'ibuprofen']"
+                },
+                "patient_age": {
+                    "type": "integer",
+                    "description": "Patient age in years — used to flag age-specific risks e.g. elderly polypharmacy"
+                },
+                "conditions": {
+                    "type": "string",
+                    "description": "Known patient conditions relevant to drug safety e.g. 'renal impairment, diabetes'"
+                }
+            },
+            "required": ["medications"]
+        }
+    },
 ]
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -251,6 +280,53 @@ def generate_soap_note(
 
     return result
 
+def check_drug_interactions(
+    medications: list,
+    patient_age: int = None,
+    conditions: str = None
+) -> str:
+    """
+    Check a medication list for drug-drug interactions and safety flags.
+    References Fimea (Finnish Medicines Agency) safety principles.
+    Flags age-specific risks for elderly patients (polypharmacy awareness).
+    """
+
+    med_list = "\n".join(f"  - {med}" for med in medications)
+
+    # Flag polypharmacy risk for elderly patients
+    polypharmacy_note = ""
+    if patient_age is not None and patient_age >= 65 and len(medications) >= 5:
+        polypharmacy_note = (
+            f"\n⚠️  Polypharmacy alert: Patient is {patient_age} years old and has "
+            f"{len(medications)} medications listed. "
+            f"Fimea guidelines recommend structured medication review for elderly "
+            f"patients on 5 or more medications.\n"
+        )
+
+    result = (
+        f"DRUG INTERACTION CHECK REQUEST\n"
+        f"{'─' * 40}\n"
+        f"Medications ({len(medications)} total):\n{med_list}\n"
+        f"{polypharmacy_note}\n"
+        f"Patient age: {patient_age or 'Not provided'}\n"
+        f"Known conditions: {conditions or 'Not provided'}\n\n"
+        f"{'─' * 40}\n"
+        f"Please check for:\n"
+        f"1. Drug-drug interactions (severity: major / moderate / minor)\n"
+        f"2. Contraindications given the patient's conditions\n"
+        f"3. Age-specific risks if patient age is provided\n"
+        f"4. Recommended monitoring or dose adjustments\n\n"
+        f"For each interaction found provide:\n"
+        f"  - Drugs involved\n"
+        f"  - Severity level\n"
+        f"  - Clinical consequence\n"
+        f"  - Recommended action\n\n"
+        f"If no significant interactions are found, confirm the combination appears safe "
+        f"and note any routine monitoring still recommended."
+    )
+
+    return result
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TOOL ROUTER
@@ -264,6 +340,8 @@ def run_tool(tool_name: str, tool_input: dict) -> str:
         return lookup_icd10_codes(**tool_input)
     elif tool_name == "generate_soap_note":
         return generate_soap_note(**tool_input)
+    elif tool_name == "check_drug_interactions":
+        return check_drug_interactions(**tool_input)
     else:
         return f"Unknown tool: {tool_name}"
 
