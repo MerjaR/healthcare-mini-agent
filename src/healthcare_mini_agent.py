@@ -51,7 +51,31 @@ tools = [
             },
             "required": ["symptoms"]
         }
-    }
+    },
+
+    {
+        "name": "lookup_icd10_codes",
+        "description": (
+            "Looks up relevant ICD-10 diagnosis codes for a given symptom or condition description. "
+            "Returns the most clinically relevant codes with their official names and usage notes. "
+            "Uses ICD-10-FI, the Finnish national edition used in Finnish EHR systems. "
+            "Accepts input in Finnish or English."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "description": "Symptom or condition description in Finnish or English, e.g. 'chest pain' or 'rintakipu'"
+                },
+                "max_results": {
+                    "type": "integer",
+                    "description": "Maximum number of ICD-10 codes to return (default: 5)"
+                }
+            },
+            "required": ["description"]
+        }
+    },
 ]
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -109,6 +133,31 @@ def assess_triage_urgency(
 
     return result
 
+def lookup_icd10_codes(description: str, max_results: int = 5) -> str:
+    """
+    Look up relevant ICD-10-FI diagnosis codes for a symptom or condition.
+    Returns structured code suggestions with names and usage notes.
+    ICD-10-FI is the Finnish national edition used in Lifecare and other Finnish EHR systems.
+    """
+
+    result = (
+        f"ICD-10-FI CODE LOOKUP REQUEST\n"
+        f"{'─' * 40}\n"
+        f"Query: {description}\n"
+        f"Maximum results requested: {max_results}\n\n"
+        f"Please return the {max_results} most relevant ICD-10-FI codes for this "
+        f"symptom or condition.\n\n"
+        f"For each code provide:\n"
+        f"1. ICD-10 code (e.g. R07.4)\n"
+        f"2. Official English name\n"
+        f"3. Finnish name (ICD-10-FI)\n"
+        f"4. Brief note on when this code applies vs the others\n\n"
+        f"Order results from most to least likely based on the description.\n"
+        f"Flag any codes that are commonly confused with each other."
+    )
+
+    return result
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TOOL ROUTER
@@ -118,6 +167,8 @@ def run_tool(tool_name: str, tool_input: dict) -> str:
     """Route a tool call from Claude to the correct Python function."""
     if tool_name == "assess_triage_urgency":
         return assess_triage_urgency(**tool_input)
+    elif tool_name == "lookup_icd10_codes":
+        return lookup_icd10_codes(**tool_input)
     else:
         return f"Unknown tool: {tool_name}"
 
